@@ -1,0 +1,10 @@
+{
+  "resource": "/generate-questions",
+  "path": "/generate-questions",
+  "httpMethod": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "isBase64Encoded": false,
+  "body": "{\"resume_text\": \"Alex Mercer - Software Engineer with 4 years Python and Java experience. Skilled in problem-solving, teamwork, and meeting critical deadlines.\", \"role\": \"software\", \"round_number\": 1}"
+}
