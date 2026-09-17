@@ -1,0 +1,74 @@
+[
+  {
+    "id": "q1_01",
+    "round_number": 1,
+    "difficulty": "warm-up",
+    "category": "introduction",
+    "question": "Could you walk me through your background, your core technical strengths, and what motivated you to pursue this role?",
+    "keywords": ["background", "strength", "motivation", "experience", "role", "journey", "profile", "passionate", "strengths"]
+  },
+  {
+    "id": "q1_02",
+    "round_number": 1,
+    "difficulty": "warm-up",
+    "category": "projects",
+    "question": "Tell me about a recent project you built or contributed to. What was its main purpose and tech stack?",
+    "keywords": ["project", "tech", "stack", "built", "architecture", "technologies", "frontend", "backend", "database", "api"]
+  },
+  {
+    "id": "q1_03",
+    "round_number": 1,
+    "difficulty": "warm-up",
+    "category": "strengths",
+    "question": "What is one technical skill or tool you recently learned, and why did you decide to pick it up?",
+    "keywords": ["learned", "skill", "tool", "learning", "growth", "framework", "library", "cloud", "language", "recent"]
+  },
+  {
+    "id": "q2_01",
+    "round_number": 2,
+    "difficulty": "behavioral",
+    "category": "conflict",
+    "question": "Describe a situation where you had a technical disagreement with a teammate or lead. How did you resolve it?",
+    "keywords": ["disagreement", "conflict", "teammate", "team", "lead", "perspective", "consensus", "compromise", "discussion", "resolved"]
+  },
+  {
+    "id": "q2_02",
+    "round_number": 2,
+    "difficulty": "behavioral",
+    "category": "collaboration",
+    "question": "Tell me about a time you had to collaborate with cross-functional team members who had conflicting priorities.",
+    "keywords": ["collaboration", "cross-functional", "priorities", "stakeholders", "product", "design", "coordination", "alignment", "communication"]
+  },
+  {
+    "id": "q2_03",
+    "round_number": 2,
+    "difficulty": "behavioral",
+    "category": "failure",
+    "question": "Give an example of a project setback or mistake you made. What did you learn and how did you adapt?",
+    "keywords": ["setback", "mistake", "failure", "learned", "adapt", "retrospective", "fix", "recovery", "resilience", "accountability"]
+  },
+  {
+    "id": "q3_01",
+    "round_number": 3,
+    "difficulty": "stress",
+    "category": "production_incident",
+    "question": "Imagine your service crashed during peak production traffic and customer data is potentially inconsistent. Walk me through your first 15 minutes of triage.",
+    "keywords": ["crash", "production", "incident", "traffic", "triage", "outage", "rollback", "logs", "metrics", "debugging", "root-cause", "urgency"]
+  },
+  {
+    "id": "q3_02",
+    "round_number": 3,
+    "difficulty": "stress",
+    "category": "deadline_pressure",
+    "question": "A critical release is due tomorrow morning, but you discovered a major architectural flaw today. How do you handle this with your manager and engineering team?",
+    "keywords": ["deadline", "release", "architectural", "flaw", "risk", "tradeoff", "manager", "escalation", "postpone", "hotfix", "stakeholders"]
+  },
+  {
+    "id": "q3_03",
+    "round_number": 3,
+    "difficulty": "stress",
+    "category": "ambiguity_tradeoffs",
+    "question": "You are asked to deliver a high-stakes feature in half the required time with zero documentation and incomplete requirements. What is your strategy?",
+    "keywords": ["ambiguity", "tradeoffs", "time", "documentation", "scope", "mvp", "requirements", "pressure", "priority", "execution"]
+  }
+]
