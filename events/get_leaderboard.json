@@ -1,0 +1,16 @@
+{
+  "httpMethod": "GET",
+  "path": "/leaderboard",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "requestContext": {
+    "authorizer": {
+      "claims": {
+        "sub": "user_12345_test",
+        "email": "alex.hacker@example.com"
+      }
+    }
+  },
+  "body": null
+}
