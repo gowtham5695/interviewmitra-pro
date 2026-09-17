@@ -1,0 +1,16 @@
+{
+  "transcript": [
+    {
+      "question": "Could you walk me through your background, your core technical strengths, and what motivated you to pursue this role?",
+      "answer_text": "Um, I have been working in software engineering for three years, actually focusing on cloud services and APIs. I like building reliable systems with Python and AWS, and basically wanted to tackle larger scale distributed architectures at your company."
+    },
+    {
+      "question": "Describe a situation where you had a technical disagreement with a teammate or lead. How did you resolve it?",
+      "answer_text": "We had a disagreement on whether to use DynamoDB or PostgreSQL for our session store. My teammate wanted relational, but I proposed DynamoDB because of predictable sub-millisecond latency. To resolve it objectively, we benchmarked both under simulated concurrency, reviewed the access patterns together, and agreed on DynamoDB. It resulted in zero scaling bottlenecks during peak traffic."
+    },
+    {
+      "question": "Imagine your service crashed during peak production traffic and customer data is potentially inconsistent. Walk me through your first 15 minutes of triage.",
+      "answer_text": "Well, you know, it was really chaotic. I like quickly checked the logs and basically rolled back the last deployment immediately to prevent further errors. Then I verified database consistency."
+    }
+  ]
+}

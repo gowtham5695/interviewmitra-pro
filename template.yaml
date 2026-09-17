@@ -1,56 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  InterviewMitra Pro - P2
-  Resume Parsing (pypdf) and Question Generation (keyword matching) Lambdas
+
 
 Globals:
   Function:
     Timeout: 30
-    MemorySize: 512
-    Runtime: python3.12
-    Architectures:
-      - x86_64
-  Api:
-    Cors:
-      AllowMethods: "'GET,POST,OPTIONS'"
-      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-      AllowOrigin: "'*'"
 
-Resources:
-  ResumeParserFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: resume_parser/
-      Handler: app.lambda_handler
-      Description: Extracts plain text from base64 PDF using pypdf
-      Events:
-        ParseResumeApi:
-          Type: Api
-          Properties:
-            Path: /parse-resume
-            Method: post
-
-  GenerateQuestionsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: generate_questions/
-      Handler: app.lambda_handler
-      Description: Selects questions matching resume keywords and role/difficulty with fallback
-      Events:
-        GenerateQuestionsApi:
-          Type: Api
-          Properties:
-            Path: /generate-questions
-            Method: post
-
-Outputs:
-  ResumeParserFunction:
-    Description: Resume Parser Lambda Function ARN
-    Value: !GetAtt ResumeParserFunction.Arn
-  GenerateQuestionsFunction:
-    Description: Generate Questions Lambda Function ARN
-    Value: !GetAtt GenerateQuestionsFunction.Arn
-  InterviewMitraApi:
-    Description: API Gateway endpoint URL for Prod stage
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
