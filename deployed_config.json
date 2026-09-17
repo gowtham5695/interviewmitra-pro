@@ -1,0 +1,23 @@
+{
+  "AWS_REGION": "ap-south-1",
+  "STACK_NAME": "interviewmitra-pro-stack",
+  "API_GATEWAY_URL": "https://mupa79zr5f.execute-api.ap-south-1.amazonaws.com/Prod/",
+  "S3_BUCKET_NAME": "interviewmitra-pro-media-887064442416-ap-south-1",
+  "DYNAMODB_TABLES": {
+    "SESSIONS": "interviewmitra-pro-sessions",
+    "LEADERBOARD": "interviewmitra-pro-leaderboard"
+  },
+  "COGNITO": {
+    "USER_POOL_ID": "ap-south-1_MOkSJk7aj",
+    "USER_POOL_CLIENT_ID": "6s2jis8srogskocstaqblcpe3t"
+  },
+  "ENDPOINTS": {
+    "RESUME": "https://mupa79zr5f.execute-api.ap-south-1.amazonaws.com/Prod/resume",
+    "QUESTIONS": "https://mupa79zr5f.execute-api.ap-south-1.amazonaws.com/Prod/questions",
+    "ANSWER": "https://mupa79zr5f.execute-api.ap-south-1.amazonaws.com/Prod/answer",
+    "NEXT_ROUND": "https://mupa79zr5f.execute-api.ap-south-1.amazonaws.com/Prod/next-round",
+    "FEEDBACK": "https://mupa79zr5f.execute-api.ap-south-1.amazonaws.com/Prod/feedback",
+    "SPEAK": "https://mupa79zr5f.execute-api.ap-south-1.amazonaws.com/Prod/speak",
+    "LEADERBOARD": "https://mupa79zr5f.execute-api.ap-south-1.amazonaws.com/Prod/leaderboard"
+  }
+}

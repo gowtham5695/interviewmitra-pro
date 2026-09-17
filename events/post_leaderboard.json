@@ -1,0 +1,16 @@
+{
+  "httpMethod": "POST",
+  "path": "/leaderboard",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "requestContext": {
+    "authorizer": {
+      "claims": {
+        "sub": "user_12345_test",
+        "email": "alex.hacker@example.com"
+      }
+    }
+  },
+  "body": "{\"username\": \"Alex Hackathon\", \"score\": 95.5, \"target_role\": \"Senior Full Stack Engineer\"}"
+}
