@@ -1,0 +1,10 @@
+{
+  "resource": "/generate-questions",
+  "path": "/generate-questions",
+  "httpMethod": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "isBase64Encoded": false,
+  "body": "{\"resume_text\": \"Experienced accountant handling tax filings and ledger auditing with zero software or retail exposure.\", \"role\": \"software\", \"round_number\": 1}"
+}
