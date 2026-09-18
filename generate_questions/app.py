@@ -1,6 +1,10 @@
 import json
 import logging
 import os
+import re
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 logger = logging.getLogger()
@@ -39,7 +43,7 @@ def _build_response(status_code: int, body_dict: dict) -> dict:
         "headers": {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+            "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
             "Access-Control-Allow-Methods": "OPTIONS,POST",
         },
         "body": json.dumps(body_dict),
@@ -142,13 +146,119 @@ def select_best_question(question_bank: list[dict], resume_text: str, role: str,
     return question_bank[0], []
 
 
+def call_gemini_question(
+    resume_text: str,
+    role: str,
+    round_number: int,
+    api_key: str = None,
+    timeout: float = 10.0
+) -> dict:
+    """
+    Calls Google Gemini 2.0 Flash API to generate ONE interview question.
+    Round 1 = easy warm-up
+    Round 2 = behavioral based on resume
+    Round 3 = stress/pressure
+    Returns: {"question": "...", "difficulty": round_number}
+    """
+    if not api_key:
+        api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key or not api_key.strip():
+        raise ValueError("GEMINI_API_KEY is not set or empty")
+
+    round_descriptions = {
+        1: "easy warm-up question to break the ice and assess basic background",
+        2: "behavioral question directly exploring projects, skills, and past challenges from the candidate resume",
+        3: "stress and high-pressure situational question testing rapid crisis decision-making and composure"
+    }
+    desc = round_descriptions.get(round_number, "interview question tailored to role and experience")
+
+    prompt = (
+        f"You are an expert interviewer conducting an interview for the role of '{role}'.\n"
+        f"Candidate Resume / Background Details:\n\"\"\"{resume_text or 'No resume provided'}\"\"\"\n\n"
+        f"Stage: Round {round_number} ({desc}).\n\n"
+        f"Generate exactly ONE interview question appropriate for Round {round_number}.\n"
+        f"Difficulty mapping: round 1 = easy warm-up, round 2 = behavioral based on resume, round 3 = stress/pressure.\n"
+        f"Output must be a valid JSON object with exactly this schema:\n"
+        f"{{\n"
+        f'  "question": "Your interview question here",\n'
+        f'  "difficulty": {round_number}\n'
+        f"}}"
+    )
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key.strip()}"
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "response_mime_type": "application/json",
+            "temperature": 0.7
+        }
+    }
+
+    req_data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=req_data,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        resp_data = resp.read().decode("utf-8")
+        resp_json = json.loads(resp_data)
+
+    candidates = resp_json.get("candidates", [])
+    if not candidates:
+        raise ValueError("No candidates returned by Gemini API")
+
+    first_candidate = candidates[0]
+    content = first_candidate.get("content", {})
+    parts = content.get("parts", [])
+    if not parts:
+        raise ValueError("No parts returned in Gemini candidate content")
+
+    raw_text = parts[0].get("text", "").strip()
+    if not raw_text:
+        raise ValueError("Empty text returned in Gemini candidate part")
+
+    # Clean markdown fences if model wrapped response
+    cleaned_text = raw_text
+    if cleaned_text.startswith("```"):
+        cleaned_text = re.sub(r"^```(?:json)?\s*", "", cleaned_text)
+        cleaned_text = re.sub(r"\s*```$", "", cleaned_text)
+
+    result = json.loads(cleaned_text)
+    if "question" not in result or not result["question"]:
+        raise ValueError("Gemini response missing valid 'question' field")
+
+    diff_val = result.get("difficulty", round_number)
+    try:
+        diff_int = int(diff_val)
+    except (ValueError, TypeError):
+        diff_int = round_number
+
+    return {
+        "question": str(result["question"]).strip(),
+        "difficulty": diff_int
+    }
+
+
 def lambda_handler(event, context):
     """
     Lambda handler for question generation.
     Takes {resume_text, role, round_number}.
     Returns JSON: {question, difficulty}.
+    Tries Google Gemini API first, falling back to keyword matching if Gemini fails.
     """
     logger.info("Received generate_questions event")
+
+    if isinstance(event, dict) and event.get("httpMethod") == "OPTIONS":
+        return _build_response(200, {"message": "OK"})
 
     try:
         data = {}
@@ -172,6 +282,28 @@ def lambda_handler(event, context):
         difficulty = parse_round_number(raw_round)
         role = normalize_role(raw_role)
 
+        # 1. Try Gemini API first if GEMINI_API_KEY is configured
+        gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        if gemini_api_key and gemini_api_key.strip():
+            try:
+                gemini_res = call_gemini_question(
+                    resume_text=resume_text,
+                    role=role,
+                    round_number=difficulty,
+                    api_key=gemini_api_key
+                )
+                if gemini_res and gemini_res.get("question"):
+                    logger.info("Successfully generated question via Gemini 2.0 Flash")
+                    return _build_response(200, {
+                        "question": gemini_res["question"],
+                        "difficulty": gemini_res["difficulty"]
+                    })
+            except Exception as gemini_err:
+                logger.warning(
+                    f"Gemini generation failed: {gemini_err}. Falling back to keyword question bank."
+                )
+
+        # 2. Fallback: Existing keyword-matching against question_bank.json
         question_bank = load_question_bank()
         selected_question, matched_tags = select_best_question(
             question_bank=question_bank,

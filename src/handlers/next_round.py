@@ -1,9 +1,16 @@
 import json
 import logging
 import os
+import re
+import urllib.error
+import urllib.parse
+import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
-from utils import extract_keywords, format_response, parse_event_body
+try:
+    from utils import extract_keywords, format_response, parse_event_body
+except ImportError:
+    from src.handlers.utils import extract_keywords, format_response, parse_event_body
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -91,11 +98,127 @@ def select_best_question(
     return best_question
 
 
+def call_gemini_next_round(
+    round_number: int,
+    difficulty: str,
+    previous_answer_text: str = "",
+    resume_text: str = "",
+    role: str = "general",
+    api_key: str = None,
+    timeout: float = 10.0
+) -> dict:
+    """
+    Calls Google Gemini 2.0 Flash API to generate ONE interview question for the next round.
+    Round 1 = easy warm-up
+    Round 2 = behavioral based on resume / past responses
+    Round 3 = stress/pressure
+    Returns: {"question": "...", "difficulty": difficulty_str}
+    """
+    if not api_key:
+        api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key or not api_key.strip():
+        raise ValueError("GEMINI_API_KEY is not set or empty")
+
+    round_descriptions = {
+        1: "easy warm-up question to break the ice and assess basic background",
+        2: "behavioral question exploring past projects, challenges, teamwork, or technical experience",
+        3: "high-stress situational question testing crisis management and composure under pressure"
+    }
+    desc = round_descriptions.get(round_number, f"{difficulty} interview question")
+
+    context_parts = []
+    if role and role != "general":
+        context_parts.append(f"Target Role: {role}")
+    if resume_text:
+        context_parts.append(f"Candidate Resume / Background:\n\"\"\"{resume_text}\"\"\"")
+    if previous_answer_text:
+        context_parts.append(f"Candidate's Answer to Previous Round:\n\"\"\"{previous_answer_text}\"\"\"")
+
+    context_str = "\n\n".join(context_parts) if context_parts else "No specific candidate background provided."
+
+    prompt = (
+        f"You are an expert interviewer conducting an interview.\n\n"
+        f"Candidate & Session Context:\n{context_str}\n\n"
+        f"Stage: Round {round_number} ({desc}).\n\n"
+        f"Generate exactly ONE interview question appropriate for Round {round_number} ({desc}).\n"
+        f"If the candidate provided a previous answer, you may optionally follow up or transition naturally.\n"
+        f"Output must be a valid JSON object with exactly this schema:\n"
+        f"{{\n"
+        f'  "question": "Your interview question here",\n'
+        f'  "difficulty": {round_number}\n'
+        f"}}"
+    )
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key.strip()}"
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "response_mime_type": "application/json",
+            "temperature": 0.7
+        }
+    }
+
+    req_data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=req_data,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        resp_data = resp.read().decode("utf-8")
+        resp_json = json.loads(resp_data)
+
+    candidates = resp_json.get("candidates", [])
+    if not candidates:
+        raise ValueError("No candidates returned by Gemini API")
+
+    first_candidate = candidates[0]
+    content = first_candidate.get("content", {})
+    parts = content.get("parts", [])
+    if not parts:
+        raise ValueError("No parts returned in Gemini candidate content")
+
+    raw_text = parts[0].get("text", "").strip()
+    if not raw_text:
+        raise ValueError("Empty text returned in Gemini candidate part")
+
+    cleaned_text = raw_text
+    if cleaned_text.startswith("```"):
+        cleaned_text = re.sub(r"^```(?:json)?\s*", "", cleaned_text)
+        cleaned_text = re.sub(r"\s*```$", "", cleaned_text)
+
+    result = json.loads(cleaned_text)
+    if "question" not in result or not result["question"]:
+        raise ValueError("Gemini response missing valid 'question' field")
+
+    diff_val = result.get("difficulty", round_number)
+    if isinstance(diff_val, int) or (isinstance(diff_val, str) and diff_val.isdigit()):
+        diff_str = ROUND_DIFFICULTY_MAP.get(int(diff_val), difficulty)
+    elif isinstance(diff_val, str) and diff_val.lower() in DIFFICULTY_ROUND_MAP:
+        diff_str = diff_val.lower()
+    else:
+        diff_str = difficulty
+
+    return {
+        "question": str(result["question"]).strip(),
+        "difficulty": diff_str
+    }
+
+
 def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
     """
     Lambda handler for next_round.
     Input: { round_number: int, previous_answer_text: str }
     Output: { question: str, difficulty: str }
+    Tries Google Gemini API first, falling back to keyword matching if Gemini fails.
     """
     try:
         payload = parse_event_body(event)
@@ -114,7 +237,37 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
             difficulty = ROUND_DIFFICULTY_MAP.get(round_number, "warm-up")
 
         previous_answer_text = payload.get("previous_answer_text", "")
+        resume_text = payload.get("resume_text", "")
+        role = payload.get("role", "general")
 
+        is_api_gw = bool(
+            isinstance(event, dict)
+            and ("httpMethod" in event or "requestContext" in event)
+        )
+
+        # 1. Try Gemini API first if GEMINI_API_KEY is configured
+        gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        if gemini_api_key and gemini_api_key.strip():
+            try:
+                gemini_res = call_gemini_next_round(
+                    round_number=round_number,
+                    difficulty=difficulty,
+                    previous_answer_text=previous_answer_text,
+                    resume_text=resume_text,
+                    role=role,
+                    api_key=gemini_api_key
+                )
+                if gemini_res and gemini_res.get("question"):
+                    logger.info("Successfully generated next round question via Gemini 2.0 Flash")
+                    if is_api_gw:
+                        return format_response(200, gemini_res)
+                    return gemini_res
+            except Exception as gemini_err:
+                logger.warning(
+                    f"Gemini next_round generation failed: {gemini_err}. Falling back to keyword question bank."
+                )
+
+        # 2. Fallback: Existing keyword matching against question_bank.json
         question_bank = load_question_bank()
 
         # Filter by round_number or difficulty
@@ -134,12 +287,6 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
             "question": selected["question"],
             "difficulty": selected.get("difficulty", difficulty)
         }
-
-        # Check if invoked via API Gateway
-        is_api_gw = bool(
-            isinstance(event, dict)
-            and ("httpMethod" in event or "requestContext" in event)
-        )
 
         if is_api_gw:
             return format_response(200, result)
