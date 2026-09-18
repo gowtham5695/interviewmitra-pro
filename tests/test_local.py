@@ -1,7 +1,10 @@
+import io
 import json
-import unittest
+import os
 import sys
+import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 # Add project directories to sys.path
 root_dir = Path(__file__).resolve().parent.parent
@@ -125,6 +128,65 @@ class TestInterviewMitraProP2(unittest.TestCase):
         bank = questions_app.load_question_bank()
         gen_diff1_questions = [q["question"] for q in bank if q["role"] == "general" and q["difficulty"] == 1]
         self.assertIn(body["question"], gen_diff1_questions)
+
+    @patch("urllib.request.urlopen")
+    def test_generate_questions_gemini_success(self, mock_urlopen):
+        mock_gemini_response = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": json.dumps({
+                                    "question": "Gemini Question: Explain how you optimized your Python services in production.",
+                                    "difficulty": 1
+                                })
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        mock_resp_cm = MagicMock()
+        mock_resp_cm.read.return_value = json.dumps(mock_gemini_response).encode("utf-8")
+        mock_resp_cm.__enter__.return_value = mock_resp_cm
+        mock_urlopen.return_value = mock_resp_cm
+
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_gemini_key"}):
+            resp = questions_app.lambda_handler(self.questions_event, None)
+            self.assertEqual(resp["statusCode"], 200)
+            body = json.loads(resp["body"])
+            self.assertEqual(body["question"], "Gemini Question: Explain how you optimized your Python services in production.")
+            self.assertEqual(body["difficulty"], 1)
+
+    @patch("urllib.request.urlopen")
+    def test_generate_questions_gemini_network_failure_fallback(self, mock_urlopen):
+        import urllib.error
+        mock_urlopen.side_effect = urllib.error.URLError("Network unreachable")
+
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_gemini_key"}):
+            resp = questions_app.lambda_handler(self.questions_event, None)
+            self.assertEqual(resp["statusCode"], 200)
+            body = json.loads(resp["body"])
+            # Fallback should kick in and return a question from question_bank
+            self.assertIn("question", body)
+            self.assertEqual(body["difficulty"], 1)
+            self.assertIn("python", body["question"].lower())
+
+    @patch("urllib.request.urlopen")
+    def test_generate_questions_gemini_malformed_json_fallback(self, mock_urlopen):
+        mock_resp_cm = MagicMock()
+        mock_resp_cm.read.return_value = b'{"candidates": [{"content": {"parts": [{"text": "Not valid JSON output"}]}}]}'
+        mock_resp_cm.__enter__.return_value = mock_resp_cm
+        mock_urlopen.return_value = mock_resp_cm
+
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_gemini_key"}):
+            resp = questions_app.lambda_handler(self.questions_event, None)
+            self.assertEqual(resp["statusCode"], 200)
+            body = json.loads(resp["body"])
+            # Gracefully falls back
+            self.assertIn("question", body)
+            self.assertEqual(body["difficulty"], 1)
 
 
 if __name__ == "__main__":

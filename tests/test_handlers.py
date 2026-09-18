@@ -83,6 +83,50 @@ class TestNextRoundHandler(unittest.TestCase):
         self.assertIn("question", body_data)
         self.assertEqual(body_data["difficulty"], "warm-up")
 
+    @patch("urllib.request.urlopen")
+    def test_next_round_gemini_success(self, mock_urlopen):
+        mock_gemini_response = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": json.dumps({
+                                    "question": "Gemini: How do you handle production incidents under tight SLA constraints?",
+                                    "difficulty": 3
+                                })
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(mock_gemini_response).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+        mock_urlopen.return_value = mock_resp
+
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_gemini_key"}):
+            event = {"round_number": 3, "previous_answer_text": "we resolved it"}
+            response = next_round_handler(event)
+            self.assertEqual(response["question"], "Gemini: How do you handle production incidents under tight SLA constraints?")
+            self.assertEqual(response["difficulty"], "stress")
+
+    @patch("urllib.request.urlopen")
+    def test_next_round_gemini_failure_fallback(self, mock_urlopen):
+        import urllib.error
+        mock_urlopen.side_effect = urllib.error.URLError("Connection refused")
+
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_gemini_key"}):
+            event = {
+                "round_number": 2,
+                "previous_answer_text": "We had a serious disagreement with a teammate regarding technical consensus."
+            }
+            response = next_round_handler(event)
+            self.assertEqual(response["difficulty"], "behavioral")
+            self.assertIn("disagreement", response["question"].lower())
+
+
 
 class TestGenerateFeedbackHandler(unittest.TestCase):
     def test_empty_transcript(self):
