@@ -1,6 +1,6 @@
 node_modules/
 .aws-sam/
 .env
-_pycache_/
+__pycache__/
 *.pyc
 dist/
