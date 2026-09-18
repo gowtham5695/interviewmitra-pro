@@ -2,6 +2,12 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: InterviewMitra Pro Infrastructure Stack (Lambda, API Gateway, S3, DynamoDB, Cognito, Polly)
 
+Parameters:
+  GeminiApiKey:
+    Type: String
+    Description: Gemini API Key for AI operations
+    NoEcho: true
+
 Globals:
   Function:
     Timeout: 30
@@ -155,6 +161,9 @@ Resources:
     Properties:
       CodeUri: src/generate_questions/
       Handler: app.lambda_handler
+      Environment:
+        Variables:
+          GEMINI_API_KEY: !Ref GeminiApiKey
       Policies:
         - Statement:
             - Effect: Allow
@@ -181,6 +190,9 @@ Resources:
     Properties:
       CodeUri: src/next_round/
       Handler: app.lambda_handler
+      Environment:
+        Variables:
+          GEMINI_API_KEY: !Ref GeminiApiKey
       Policies:
         - Statement:
             - Effect: Allow
