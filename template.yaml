@@ -1,8 +1,325 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+Description: InterviewMitra Pro Infrastructure Stack (Lambda, API Gateway, S3, DynamoDB, Cognito, Polly)
 
+Parameters:
+  GeminiApiKey:
+    Type: String
+    Description: Gemini API Key for AI operations
+    NoEcho: true
 
 Globals:
   Function:
     Timeout: 30
+    MemorySize: 256
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        SESSIONS_TABLE: !Ref SessionsTable
+        LEADERBOARD_TABLE: !Ref LeaderboardTable
+        MEDIA_BUCKET: !Ref MediaAndResumesBucket
 
+Resources:
+  # ===================================================================
+  # Cognito User Pool & Client
+  # ===================================================================
+  InterviewMitraUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: interviewmitra-pro-user-pool
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+
+  InterviewMitraUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: interviewmitra-pro-client
+      UserPoolId: !Ref InterviewMitraUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+
+  # ===================================================================
+  # API Gateway REST API with Cognito Authorizer
+  # ===================================================================
+  InterviewMitraApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+      Auth:
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt InterviewMitraUserPool.Arn
+            AuthType: COGNITO_USER_POOLS
+
+  # ===================================================================
+  # S3 Bucket (Resumes & Polly-generated Audio)
+  # ===================================================================
+  MediaAndResumesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "interviewmitra-pro-media-${AWS::AccountId}-${AWS::Region}"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - HEAD
+            AllowedOrigins:
+              - "*"
+            MaxAge: 3000
+
+  # ===================================================================
+  # DynamoDB Tables
+  # ===================================================================
+  SessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: interviewmitra-pro-sessions
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  LeaderboardTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: interviewmitra-pro-leaderboard
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # ===================================================================
+  # Lambda Functions
+  # ===================================================================
+
+  # 1. Resume Parser Function
+  ResumeParserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/resume_parser/
+      Handler: app.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:ListBucket
+              Resource:
+                - !GetAtt MediaAndResumesBucket.Arn
+                - !Sub "${MediaAndResumesBucket.Arn}/*"
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt SessionsTable.Arn
+      Events:
+        PostResume:
+          Type: Api
+          Properties:
+            Path: /resume
+            Method: post
+            RestApiId: !Ref InterviewMitraApi
+
+  # 2. Generate Questions Function
+  GenerateQuestionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/generate_questions/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          GEMINI_API_KEY: !Ref GeminiApiKey
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt SessionsTable.Arn
+      Events:
+        PostQuestions:
+          Type: Api
+          Properties:
+            Path: /questions
+            Method: post
+            RestApiId: !Ref InterviewMitraApi
+
+  # 3. Next Round / Answer Function
+  NextRoundFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/next_round/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          GEMINI_API_KEY: !Ref GeminiApiKey
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt SessionsTable.Arn
+      Events:
+        PostAnswer:
+          Type: Api
+          Properties:
+            Path: /answer
+            Method: post
+            RestApiId: !Ref InterviewMitraApi
+        PostNextRound:
+          Type: Api
+          Properties:
+            Path: /next-round
+            Method: post
+            RestApiId: !Ref InterviewMitraApi
+
+  # 4. Generate Feedback Function
+  GenerateFeedbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/generate_feedback/
+      Handler: app.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt SessionsTable.Arn
+      Events:
+        PostFeedback:
+          Type: Api
+          Properties:
+            Path: /feedback
+            Method: post
+            RestApiId: !Ref InterviewMitraApi
+
+  # 5. Speak Question Function (Polly Synthesis)
+  SpeakQuestionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/speak_question/
+      Handler: app.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - polly:SynthesizeSpeech
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:ListBucket
+              Resource:
+                - !GetAtt MediaAndResumesBucket.Arn
+                - !Sub "${MediaAndResumesBucket.Arn}/*"
+      Events:
+        PostSpeak:
+          Type: Api
+          Properties:
+            Path: /speak
+            Method: post
+            RestApiId: !Ref InterviewMitraApi
+
+  # 6. Leaderboard Handler Function
+  LeaderboardHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/leaderboard/
+      Handler: app.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt LeaderboardTable.Arn
+      Events:
+        GetLeaderboard:
+          Type: Api
+          Properties:
+            Path: /leaderboard
+            Method: get
+            RestApiId: !Ref InterviewMitraApi
+            Auth:
+              Authorizer: CognitoAuthorizer
+        PostLeaderboard:
+          Type: Api
+          Properties:
+            Path: /leaderboard
+            Method: post
+            RestApiId: !Ref InterviewMitraApi
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL for Prod stage
+    Value: !Sub "https://${InterviewMitraApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref InterviewMitraUserPool
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref InterviewMitraUserPoolClient
+  S3BucketName:
+    Description: Media and Resumes S3 Bucket Name
+    Value: !Ref MediaAndResumesBucket
