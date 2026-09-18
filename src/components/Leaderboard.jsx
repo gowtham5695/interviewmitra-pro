@@ -16,9 +16,11 @@ export default function Leaderboard({ currentUser, onBackToUpload }) {
   const [selectedRole, setSelectedRole] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const fetchLeaderboardData = async (role) => {
     setLoading(true);
+    setError('');
     try {
       const res = await getLeaderboard(role);
       if (res.success) {
@@ -26,6 +28,7 @@ export default function Leaderboard({ currentUser, onBackToUpload }) {
       }
     } catch (err) {
       console.error('Failed to fetch leaderboard:', err);
+      setError(err.message || 'Failed to fetch leaderboard rankings from API Gateway.');
     } finally {
       setLoading(false);
     }
@@ -131,6 +134,11 @@ export default function Leaderboard({ currentUser, onBackToUpload }) {
 
       {/* Leaderboard Table Card */}
       <div className="glass-card rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+        {error && (
+          <div className="p-4 bg-rose-500/10 border-b border-rose-500/20 text-rose-400 text-xs sm:text-sm flex items-center gap-2">
+            <span>⚠️ <strong>API Gateway Error:</strong> {error}</span>
+          </div>
+        )}
         {loading ? (
           <div className="py-16 text-center text-slate-400 space-y-3">
             <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto" />

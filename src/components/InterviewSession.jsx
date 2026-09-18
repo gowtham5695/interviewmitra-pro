@@ -114,6 +114,7 @@ export default function InterviewSession({ sessionInfo, onInterviewComplete }) {
       }
     } catch (err) {
       console.error('Error fetching question:', err);
+      setRecognitionError(err.message || 'Error fetching question from API Gateway.');
     } finally {
       setLoadingQuestion(false);
     }
@@ -194,9 +195,13 @@ export default function InterviewSession({ sessionInfo, onInterviewComplete }) {
         setRoundScores(newScores);
         setRoundAnswers(newAnswers);
 
-        // Check if round 3 complete
-        const nextRes = await getNextRound(sessionInfo.sessionId, round);
-        if (nextRes.isFinished || round >= 3) {
+        // Transition to next round or complete interview
+        if (round >= 3) {
+          try {
+            await getNextRound(sessionInfo.sessionId, round);
+          } catch (e) {
+            console.warn('getNextRound call note:', e.message);
+          }
           onInterviewComplete({
             sessionId: sessionInfo.sessionId,
             candidateName: sessionInfo.candidateName,
@@ -205,11 +210,16 @@ export default function InterviewSession({ sessionInfo, onInterviewComplete }) {
             roundAnswers: newAnswers
           });
         } else {
-          setRound(nextRes.currentRound);
+          try {
+            const nextRes = await getNextRound(sessionInfo.sessionId, round);
+            setRound(nextRes.currentRound || (round + 1));
+          } catch (e) {
+            setRound(round + 1);
+          }
         }
       }
     } catch (err) {
-      setRecognitionError('Failed to submit answer. Please try again.');
+      setRecognitionError(err.message || 'Failed to submit answer. Please try again.');
     } finally {
       setSubmitting(false);
     }

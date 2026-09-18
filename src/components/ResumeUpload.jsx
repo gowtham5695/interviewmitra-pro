@@ -205,20 +205,28 @@ export default function ResumeUpload({ onSessionStart }) {
             </div>
           )}
 
-          {/* Parsed Keywords Preview State */}
+          {/* Parsed Keywords & Endpoint Response Preview State */}
           {parsedData && (
             <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 space-y-2">
               <div className="flex items-center justify-between text-xs text-cyan-300 font-semibold">
-                <span>Resume Keywords Extracted:</span>
-                <ShieldCheck className="w-4 h-4" />
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  API Gateway Response: {parsedData.message || 'Resume Uploaded Successfully'}
+                </span>
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {parsedData.extractedKeywords.map((kw) => (
-                  <span key={kw} className="px-2.5 py-0.5 rounded-md bg-slate-900/90 text-cyan-400 text-xs font-mono border border-cyan-500/30">
-                    {kw}
-                  </span>
-                ))}
-              </div>
+              {parsedData.extractedKeywords && parsedData.extractedKeywords.length > 0 && (
+                <div className="space-y-1 pt-1">
+                  <p className="text-[11px] text-slate-400">Extracted Role Keywords:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {parsedData.extractedKeywords.map((kw) => (
+                      <span key={kw} className="px-2.5 py-0.5 rounded-md bg-slate-900/90 text-cyan-400 text-xs font-mono border border-cyan-500/30">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
