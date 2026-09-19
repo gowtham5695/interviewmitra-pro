@@ -1,11 +1,15 @@
 import React from 'react';
-import { Flame, Sparkles, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Flame, Sparkles, ShieldAlert } from 'lucide-react';
 
 /**
  * DifficultyBadge Component
- * Displays visual round indicator (Round 1/2/3) with distinct difficulty styling.
+ * Round 1: Green Warm-up
+ * Round 2: Yellow Behavioral
+ * Round 3: Red Stress
  */
 export default function DifficultyBadge({ round = 1, className = '' }) {
+  const roundNum = Number(round) || 1;
+
   const roundConfigs = {
     1: {
       label: 'Round 1 • Warm-up',
@@ -22,15 +26,15 @@ export default function DifficultyBadge({ round = 1, className = '' }) {
       dotColor: 'bg-amber-400',
     },
     3: {
-      label: 'Round 3 • Stress & Technical',
-      subtitle: 'System Design & Pressure',
+      label: 'Round 3 • Stress',
+      subtitle: 'System Design & High Pressure',
       bgClass: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
       icon: ShieldAlert,
       dotColor: 'bg-rose-400',
     }
   };
 
-  const config = roundConfigs[round] || roundConfigs[1];
+  const config = roundConfigs[roundNum] || roundConfigs[1];
   const IconComponent = config.icon;
 
   return (

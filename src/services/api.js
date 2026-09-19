@@ -1,7 +1,4 @@
-/**
- * InterviewMitra Pro API Service Layer
- * Connects directly to AWS API Gateway Prod Endpoints.
- */
+import { getStoredAuth } from './cognitoAuth';
 
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'https://uv12f3v25j.execute-api.ap-south-1.amazonaws.com/Prod';
 
@@ -125,35 +122,55 @@ const QUESTION_BANK = {
  * Fetch current question for a given round
  * POST https://uv12f3v25j.execute-api.ap-south-1.amazonaws.com/Prod/questions
  */
-export async function getQuestion(sessionId, round = 1, role = 'Software Engineer') {
+export async function getQuestion(sessionId, round = 1, role = 'Software Engineer', resumeText = '') {
   let data = {};
   try {
     const response = await fetch(`${API_BASE_URL}/questions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, round, role })
+      body: JSON.stringify({
+        sessionId,
+        round: round,
+        round_number: round,
+        role: role,
+        resume_text: resumeText
+      })
     });
     data = await handleResponse(response, `Failed to fetch question for round ${round}`);
   } catch (err) {
     console.warn('API Gateway questions endpoint warning:', err.message);
   }
 
-  // Get question from API if custom text returned, else pick from role question bank
+  // Pick candidate question from role-specific question bank
   const roleBank = QUESTION_BANK[role] || QUESTION_BANK['Software Engineer'];
   const roundBank = roleBank[round] || roleBank[1];
   const defaultQ = roundBank[Math.floor(Math.random() * roundBank.length)];
 
   let questionText = defaultQ.text;
-  if (data.question && typeof data.question === 'string') {
-    questionText = data.question;
+  
+  // Extract question string from API response if present
+  let apiQuestion = '';
+  if (typeof data.question === 'string') {
+    apiQuestion = data.question;
   } else if (data.question?.text) {
-    questionText = data.question.text;
+    apiQuestion = data.question.text;
   } else if (data.questionText) {
-    questionText = data.questionText;
+    apiQuestion = data.questionText;
+  }
+
+  // Detect if API response returned generic non-technical fallback (e.g. q_gen_1_01)
+  const isGenericFallback = !apiQuestion ||
+    apiQuestion.includes('introduce yourself and highlight') ||
+    apiQuestion.includes('top skills and experiences that make you a great fit') ||
+    data.question_id === 'q_gen_1_01';
+
+  // Use API Gateway question if it is custom/specific, otherwise use role-specific technical question
+  if (!isGenericFallback && apiQuestion.trim().length > 0) {
+    questionText = apiQuestion.trim();
   }
 
   const questionObj = {
-    id: `q_${round}_${Date.now()}`,
+    id: data.question_id || `q_${round}_${Date.now()}`,
     text: questionText,
     durationSec: defaultQ.durationSec || (round === 1 ? 60 : round === 2 ? 120 : 180),
     audioUrl: null
@@ -337,25 +354,40 @@ export async function getFeedback(sessionId, sessionData = {}) {
 
 /**
  * Fetch leaderboard ranking table
- * GET / POST https://uv12f3v25j.execute-api.ap-south-1.amazonaws.com/Prod/leaderboard
+ * GET https://uv12f3v25j.execute-api.ap-south-1.amazonaws.com/Prod/leaderboard
  */
 export async function getLeaderboard(roleFilter = 'All') {
-  let response;
-  try {
-    response = await fetch(`${API_BASE_URL}/leaderboard?role=${encodeURIComponent(roleFilter)}`, {
-      method: 'GET'
-    });
-  } catch (e) {
-    response = await fetch(`${API_BASE_URL}/leaderboard`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: roleFilter })
-    });
+  const auth = getStoredAuth();
+  const headers = {};
+  if (auth?.idToken) {
+    headers['Authorization'] = `Bearer ${auth.idToken}`;
   }
 
-  const data = await handleResponse(response, 'Failed to fetch leaderboard rankings');
+  const response = await fetch(`${API_BASE_URL}/leaderboard`, {
+    method: 'GET',
+    headers
+  });
 
-  let leaderboardData = data.leaderboard || data.data || (Array.isArray(data) ? data : []);
+  const data = await handleResponse(response, 'Failed to fetch leaderboard rankings from AWS API Gateway');
+
+  let rawList = data.leaderboard || data.data || (Array.isArray(data) ? data : []);
+
+  // Standardize object keys to match frontend table (user, role, score, wpm, fillerWordsCount)
+  let leaderboardData = rawList.map((item, idx) => ({
+    id: item.user_id || `rank_${idx}`,
+    user: item.username || item.user || 'Candidate',
+    role: item.target_role || item.role || 'Software Engineer',
+    score: typeof item.score === 'number' ? item.score : (parseFloat(item.score) || 0),
+    wpm: item.wpm || 138,
+    fillerWordsCount: item.fillerWordsCount ?? item.fillers ?? 2,
+    updated_at: item.updated_at || Date.now()
+  }));
+
+  if (roleFilter && roleFilter !== 'All') {
+    leaderboardData = leaderboardData.filter((item) =>
+      item.role.toLowerCase().includes(roleFilter.toLowerCase())
+    );
+  }
 
   return {
     success: true,
@@ -368,15 +400,29 @@ export async function getLeaderboard(roleFilter = 'All') {
  * Post user score to leaderboard (POST /leaderboard)
  */
 export async function addScoreToLeaderboard(entry) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/leaderboard`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry)
-    });
-    return await handleResponse(response, 'Failed to publish score to leaderboard');
-  } catch (err) {
-    throw err;
+  const auth = getStoredAuth();
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (auth?.idToken) {
+    headers['Authorization'] = `Bearer ${auth.idToken}`;
   }
+
+  const payload = {
+    user_id: auth?.email || entry.user || 'candidate_user',
+    username: entry.user || auth?.email || 'Anonymous Candidate',
+    target_role: entry.role || 'Software Engineer',
+    score: typeof entry.score === 'number' ? entry.score : 0,
+    fillerWordsCount: entry.fillerWordsCount ?? 0,
+    wpm: entry.wpm ?? 138
+  };
+
+  const response = await fetch(`${API_BASE_URL}/leaderboard`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload)
+  });
+
+  return await handleResponse(response, 'Failed to publish score to leaderboard');
 }
 

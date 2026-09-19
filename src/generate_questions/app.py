@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import random
 import re
 import urllib.error
 import urllib.parse
@@ -85,9 +86,9 @@ def normalize_role(raw_role: str) -> str:
 def select_best_question(question_bank: list[dict], resume_text: str, role: str, difficulty: int) -> tuple[dict, list[str]]:
     """
     Selects the best question matching role and round difficulty based on substring matching of skill_tags.
-    Falls back to a generic question for that difficulty if no positive match is found.
+    Randomly selects among candidates matching role & difficulty so every candidate gets dynamic questions.
     """
-    resume_lower = resume_text.lower()
+    resume_lower = (resume_text or "").lower()
 
     # Step 1: Filter question bank by role and difficulty
     role_candidates = [
@@ -95,55 +96,55 @@ def select_best_question(question_bank: list[dict], resume_text: str, role: str,
         if q.get("role", "").lower() == role and q.get("difficulty") == difficulty
     ]
 
-    best_candidate = None
-    best_matching_tags = []
-    max_score = 0
+    if role_candidates:
+        scored = []
+        for candidate in role_candidates:
+            tags = candidate.get("skill_tags", [])
+            matching_tags = [t for t in tags if t.lower() in resume_lower]
+            score = len(matching_tags)
+            scored.append((score, candidate, matching_tags))
 
-    for candidate in role_candidates:
-        tags = candidate.get("skill_tags", [])
-        # Check which skill_tags appear as substrings in lowercased resume_text
-        matching_tags = [t for t in tags if t.lower() in resume_lower]
-        score = len(matching_tags)
+        scored.sort(key=lambda x: x[0], reverse=True)
+        max_score = scored[0][0]
 
-        if score > max_score:
-            max_score = score
-            best_candidate = candidate
-            best_matching_tags = matching_tags
+        if max_score > 0:
+            top_candidates = [item for item in scored if item[0] == max_score]
+            chosen = random.choice(top_candidates)
+            return chosen[1], chosen[2]
+        else:
+            chosen = random.choice(role_candidates)
+            return chosen, []
 
-    # Step 2: If a good match is found (score > 0), return it
-    if best_candidate and max_score > 0:
-        return best_candidate, best_matching_tags
-
-    # Step 3: Fallback - pick a generic question for that difficulty
+    # Step 2: Fallback - pick a generic question for that difficulty
     generic_candidates = [
         q for q in question_bank
         if q.get("role", "").lower() == "general" and q.get("difficulty") == difficulty
     ]
 
     if generic_candidates:
-        # Check if any generic question has matching tags
-        generic_best = None
-        generic_best_tags = []
-        generic_max = 0
+        scored = []
         for g in generic_candidates:
             tags = g.get("skill_tags", [])
             m = [t for t in tags if t.lower() in resume_lower]
-            if len(m) > generic_max:
-                generic_max = len(m)
-                generic_best = g
-                generic_best_tags = m
+            scored.append((len(m), g, m))
 
-        if generic_best and generic_max > 0:
-            return generic_best, generic_best_tags
-        return generic_candidates[0], []
+        scored.sort(key=lambda x: x[0], reverse=True)
+        max_score = scored[0][0]
+
+        if max_score > 0:
+            top_generic = [item for item in scored if item[0] == max_score]
+            chosen = random.choice(top_generic)
+            return chosen[1], chosen[2]
+
+        return random.choice(generic_candidates), []
 
     # Final fallback if neither role nor generic matched
     any_diff_candidates = [q for q in question_bank if q.get("difficulty") == difficulty]
     if any_diff_candidates:
-        return any_diff_candidates[0], []
+        return random.choice(any_diff_candidates), []
 
     # Ultimate fallback
-    return question_bank[0], []
+    return random.choice(question_bank), []
 
 
 def call_gemini_question(
@@ -277,7 +278,7 @@ def lambda_handler(event, context):
 
         resume_text = data.get("resume_text", "")
         raw_role = data.get("role", "general")
-        raw_round = data.get("round_number", 1)
+        raw_round = data.get("round_number") if data.get("round_number") is not None else data.get("round", 1)
 
         difficulty = parse_round_number(raw_round)
         role = normalize_role(raw_role)
