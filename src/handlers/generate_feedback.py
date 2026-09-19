@@ -1,5 +1,10 @@
 import json
 import logging
+import os
+import re
+import urllib.error
+import urllib.parse
+import urllib.request
 from typing import Any, Dict, List
 
 from utils import calculate_word_count, count_filler_words, format_response, parse_event_body
@@ -70,9 +75,12 @@ def evaluate_transcript(transcript: List[Dict[str, str]]) -> Dict[str, Any]:
     # 1. Start at 70
     # 2. Subtract 2 points per filler word
     # 3. Add 10 points for each answer in good length range (30-120 words)
+    # 4. Subtract 5 points for each answer outside optimal range (too short / too long)
     score = 70
     score -= (total_filler_count * 2)
     score += (answers_in_good_range * 10)
+    score -= (answers_too_short * 5)
+    score -= (answers_too_long * 5)
 
     # Clamp strictly between 0 and 100
     final_score = max(0, min(100, score))
@@ -128,10 +136,133 @@ def evaluate_transcript(transcript: List[Dict[str, str]]) -> Dict[str, Any]:
     }
 
 
+def call_gemini_feedback(
+    transcript: List[Dict[str, str]],
+    role: str = "general",
+    resume_text: str = "",
+    api_key: str = None,
+    timeout: float = 12.0
+) -> Dict[str, Any]:
+    """
+    Calls Google Gemini 2.0 Flash API to evaluate the full interview transcript.
+    Evaluates:
+    - Technical depth, relevance, structure (e.g. STAR method)
+    - Speech fluency, conciseness, filler word patterns, pacing
+    - Overall score (0-100) separating strong from weak performance
+    - Detailed, specific, actionable feedback without generic filler.
+    Returns: {"final_score": int, "content_feedback": str, "fluency_feedback": str}
+    """
+    if not api_key:
+        api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key or not api_key.strip():
+        raise ValueError("GEMINI_API_KEY is not set or empty")
+
+    transcript_items = []
+    for i, item in enumerate(transcript, 1):
+        q = item.get("question", f"Question {i}")
+        a = item.get("answer_text", "").strip()
+        transcript_items.append(f"Round {i} Question: {q}\nCandidate Answer: {a}")
+
+    transcript_formatted = "\n\n".join(transcript_items)
+
+    context_lines = []
+    if role and role != "general":
+        context_lines.append(f"Target Role: {role}")
+    if resume_text:
+        context_lines.append(f"Candidate Resume / Background:\n\"\"\"{resume_text}\"\"\"")
+
+    context_str = "\n".join(context_lines) if context_lines else "Role: General Professional"
+
+    prompt = (
+        f"You are an expert interview coach and technical evaluator conducting a performance review of an interview.\n\n"
+        f"{context_str}\n\n"
+        f"Interview Transcript:\n{transcript_formatted}\n\n"
+        f"Evaluation Instructions:\n"
+        f"1. Score (final_score): Provide an overall numerical score strictly between 0 and 100.\n"
+        f"   - Strong answers (clear structure/STAR method, concrete technical details, high relevance, strong impact) must receive high scores (80-98).\n"
+        f"   - Weak answers (too brief, vague, lacking substance, rambling, or heavy filler words) must receive low scores (20-55).\n"
+        f"2. content_feedback: Provide detailed, highly specific analysis of the candidate's answers. "
+        f"Highlight exact technical strengths, note specific missed opportunities, evaluate structural clarity (STAR approach), "
+        f"and provide concrete improvements. Do NOT use generic filler words like 'good job' or 'nice try'.\n"
+        f"3. fluency_feedback: Provide detailed analysis of communication delivery, answer conciseness, pacing, and filler word usage. "
+        f"Include specific coaching tips on verbal clarity and composure.\n\n"
+        f"Output must be a valid JSON object matching this schema exactly:\n"
+        f"{{\n"
+        f'  "final_score": <int 0-100>,\n'
+        f'  "content_feedback": "<specific technical & content evaluation>",\n'
+        f'  "fluency_feedback": "<specific verbal & fluency coaching>"\n'
+        f"}}"
+    )
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key.strip()}"
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "response_mime_type": "application/json",
+            "temperature": 0.3
+        }
+    }
+
+    req_data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=req_data,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        resp_data = resp.read().decode("utf-8")
+        resp_json = json.loads(resp_data)
+
+    candidates = resp_json.get("candidates", [])
+    if not candidates:
+        raise ValueError("No candidates returned by Gemini API")
+
+    first_candidate = candidates[0]
+    content = first_candidate.get("content", {})
+    parts = content.get("parts", [])
+    if not parts:
+        raise ValueError("No parts returned in Gemini candidate content")
+
+    raw_text = parts[0].get("text", "").strip()
+    if not raw_text:
+        raise ValueError("Empty text returned in Gemini candidate part")
+
+    cleaned_text = raw_text
+    if cleaned_text.startswith("```"):
+        cleaned_text = re.sub(r"^```(?:json)?\s*", "", cleaned_text)
+        cleaned_text = re.sub(r"\s*```$", "", cleaned_text)
+
+    result = json.loads(cleaned_text)
+
+    if "final_score" not in result or "content_feedback" not in result or "fluency_feedback" not in result:
+        raise ValueError("Gemini response missing required feedback fields (final_score, content_feedback, fluency_feedback)")
+
+    # Ensure score is an integer between 0 and 100
+    try:
+        score_val = int(round(float(result["final_score"])))
+        score_val = max(0, min(100, score_val))
+    except (ValueError, TypeError):
+        score_val = 70
+
+    return {
+        "final_score": score_val,
+        "content_feedback": str(result["content_feedback"]).strip(),
+        "fluency_feedback": str(result["fluency_feedback"]).strip()
+    }
+
+
 def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
     """
     Lambda handler for generate_feedback.
-    Input: { transcript: [ { question: str, answer_text: str }, ... ] }
+    Input: { transcript: [ { question: str, answer_text: str }, ... ], role: str, resume_text: str }
     Output: { content_feedback: str, fluency_feedback: str, final_score: int }
     """
     try:
@@ -142,13 +273,43 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
         if isinstance(payload, list):
             transcript = payload
 
-        result = evaluate_transcript(transcript)
+        role = payload.get("role", "general") if isinstance(payload, dict) else "general"
+        resume_text = payload.get("resume_text", "") if isinstance(payload, dict) else ""
 
-        # Check if invoked via API Gateway
         is_api_gw = bool(
             isinstance(event, dict)
             and ("httpMethod" in event or "requestContext" in event)
         )
+
+        # Return baseline response for empty transcript
+        if not transcript:
+            empty_res = evaluate_transcript([])
+            if is_api_gw:
+                return format_response(200, empty_res)
+            return empty_res
+
+        # 1. Try Gemini API first if GEMINI_API_KEY is configured
+        gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        if gemini_api_key and gemini_api_key.strip():
+            try:
+                gemini_res = call_gemini_feedback(
+                    transcript=transcript,
+                    role=role,
+                    resume_text=resume_text,
+                    api_key=gemini_api_key
+                )
+                if gemini_res and "final_score" in gemini_res:
+                    logger.info("Successfully generated feedback via Gemini 2.0 Flash")
+                    if is_api_gw:
+                        return format_response(200, gemini_res)
+                    return gemini_res
+            except Exception as gemini_err:
+                logger.warning(
+                    f"Gemini feedback generation failed: {gemini_err}. Falling back to formula evaluation."
+                )
+
+        # 2. Fallback: Formula-based transcript evaluation
+        result = evaluate_transcript(transcript)
 
         if is_api_gw:
             return format_response(200, result)

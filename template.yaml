@@ -225,6 +225,9 @@ Resources:
     Properties:
       CodeUri: src/generate_feedback/
       Handler: app.lambda_handler
+      Environment:
+        Variables:
+          GEMINI_API_KEY: !Ref GeminiApiKey
       Policies:
         - Statement:
             - Effect: Allow

@@ -168,6 +168,104 @@ class TestGenerateFeedbackHandler(unittest.TestCase):
         result_perfect = evaluate_transcript(perfect_answers)
         self.assertLessEqual(result_perfect["final_score"], 100)
 
+    @patch("urllib.request.urlopen")
+    def test_feedback_gemini_success_strong(self, mock_urlopen):
+        mock_gemini_response = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": json.dumps({
+                                    "final_score": 94,
+                                    "content_feedback": "Excellent technical depth using STAR methodology. Demonstrated sub-millisecond database optimizations and high-concurrency event streaming architecture.",
+                                    "fluency_feedback": "Exceptional verbal delivery with steady pacing, confident tone, and zero detectable filler words throughout all 3 rounds."
+                                })
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(mock_gemini_response).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+        mock_urlopen.return_value = mock_resp
+
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_gemini_key"}):
+            event = {
+                "transcript": [
+                    {
+                        "question": "Walk me through your background.",
+                        "answer_text": "Over the past four years as a Senior Backend Engineer, I specialized in architecting event-driven microservices using Python and AWS DynamoDB. At my previous company, I led the redesign of our real-time payment ingestion pipeline, reducing p99 latency from 450ms to 45ms while supporting over 50,000 requests per second with 99.99% availability."
+                    }
+                ]
+            }
+            response = feedback_handler(event)
+            self.assertEqual(response["final_score"], 94)
+            self.assertIn("STAR methodology", response["content_feedback"])
+            self.assertNotIn("good job", response["content_feedback"].lower())
+            self.assertIn("Exceptional verbal delivery", response["fluency_feedback"])
+
+    @patch("urllib.request.urlopen")
+    def test_feedback_gemini_success_weak(self, mock_urlopen):
+        mock_gemini_response = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": json.dumps({
+                                    "final_score": 38,
+                                    "content_feedback": "Responses lacked technical depth and concrete metrics. The answer to the production outage question was evasive and failed to articulate root cause analysis procedures or systematic triage steps.",
+                                    "fluency_feedback": "Heavy reliance on filler words ('um', 'like', 'you know') disrupted clarity. Practice deliberate pausing and structuring answers before speaking."
+                                })
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(mock_gemini_response).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+        mock_urlopen.return_value = mock_resp
+
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_gemini_key"}):
+            event = {
+                "transcript": [
+                    {
+                        "question": "Walk me through your background.",
+                        "answer_text": "Um, I do some coding and like stuff with servers."
+                    }
+                ]
+            }
+            response = feedback_handler(event)
+            self.assertEqual(response["final_score"], 38)
+            self.assertIn("lacked technical depth", response["content_feedback"])
+            self.assertIn("filler words", response["fluency_feedback"])
+
+    @patch("urllib.request.urlopen")
+    def test_feedback_gemini_failure_fallback(self, mock_urlopen):
+        import urllib.error
+        mock_urlopen.side_effect = urllib.error.URLError("Gemini Service Unavailable")
+
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_gemini_key"}):
+            event = {
+                "transcript": [
+                    {
+                        "question": "Tell me about your background.",
+                        "answer_text": "I worked on cloud architecture for three years where I led multiple backend integrations across production systems with AWS."
+                    }
+                ]
+            }
+            response = feedback_handler(event)
+            # Falls back to formula score
+            self.assertIsInstance(response["final_score"], int)
+            self.assertIn("optimal depth", response["content_feedback"])
+            self.assertIn("fluency", response["fluency_feedback"].lower())
+
+
 
 class TestSpeakQuestionHandler(unittest.TestCase):
     def test_mock_mode(self):
