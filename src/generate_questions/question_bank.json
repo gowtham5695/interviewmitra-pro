@@ -4,139 +4,444 @@
     "question": "Can you explain the difference between lists and tuples in Python, and how you use them when solving problems?",
     "role": "software",
     "difficulty": 1,
-    "skill_tags": ["python", "problem-solving"]
+    "round_number": 1,
+    "skill_tags": [
+      "python",
+      "problem-solving"
+    ]
   },
   {
     "id": "q_sw_1_02",
     "question": "What is the difference between an interface and an abstract class in Java, and when would you choose one over the other?",
     "role": "software",
     "difficulty": 1,
-    "skill_tags": ["java", "problem-solving"]
+    "round_number": 1,
+    "skill_tags": [
+      "java",
+      "problem-solving"
+    ]
   },
   {
     "id": "q_sw_1_03",
     "question": "How do you write readable and maintainable Python code, and how do you communicate your design choices during code reviews?",
     "role": "software",
     "difficulty": 1,
-    "skill_tags": ["python", "communication"]
+    "round_number": 1,
+    "skill_tags": [
+      "python",
+      "communication"
+    ]
+  },
+  {
+    "id": "q_sw_1_04",
+    "question": "When designing client-server architectures, how do you decide between REST APIs and GraphQL, and what trade-offs do you consider?",
+    "role": "software",
+    "difficulty": 1,
+    "round_number": 1,
+    "skill_tags": [
+      "api",
+      "communication",
+      "problem-solving"
+    ]
   },
   {
     "id": "q_sw_2_01",
     "question": "Tell me about a time you had to deliver a critical Python feature with your team under a tight deadline. How did you handle trade-offs?",
     "role": "software",
     "difficulty": 2,
-    "skill_tags": ["python", "teamwork", "deadlines"]
+    "round_number": 2,
+    "skill_tags": [
+      "python",
+      "teamwork",
+      "deadlines"
+    ]
   },
   {
     "id": "q_sw_2_02",
     "question": "Describe a complex bug or performance issue you encountered in a Java application. How did you collaborate with teammates to resolve it?",
     "role": "software",
     "difficulty": 2,
-    "skill_tags": ["java", "problem-solving", "teamwork"]
+    "round_number": 2,
+    "skill_tags": [
+      "java",
+      "problem-solving",
+      "teamwork"
+    ]
   },
   {
     "id": "q_sw_2_03",
     "question": "Can you share an experience where you took the lead on refactoring a legacy codebase or designing a new software component?",
     "role": "software",
     "difficulty": 2,
-    "skill_tags": ["leadership", "problem-solving"]
+    "round_number": 2,
+    "skill_tags": [
+      "leadership",
+      "problem-solving"
+    ]
+  },
+  {
+    "id": "q_sw_2_04",
+    "question": "Describe a project where you implemented AWS serverless services (such as Lambda or DynamoDB) or containerized microservices with Docker. What concurrency or bottleneck issue did you resolve?",
+    "role": "software",
+    "difficulty": 2,
+    "round_number": 2,
+    "skill_tags": [
+      "aws",
+      "docker",
+      "dynamodb",
+      "problem-solving"
+    ]
+  },
+  {
+    "id": "q_sw_2_05",
+    "question": "In a web project using React or modern frontend frameworks, tell me about an instance where you optimized component re-rendering, state management, or client-side caching to meet strict latency goals.",
+    "role": "software",
+    "difficulty": 2,
+    "round_number": 2,
+    "skill_tags": [
+      "react",
+      "problem-solving",
+      "performance"
+    ]
   },
   {
     "id": "q_sw_3_01",
     "question": "A production Python service is experiencing sudden latency spikes and memory exhaustion right before a major release. Walk me through your step-by-step debugging and triage strategy under extreme pressure.",
     "role": "software",
     "difficulty": 3,
-    "skill_tags": ["python", "problem-solving", "deadlines"]
+    "round_number": 3,
+    "skill_tags": [
+      "python",
+      "problem-solving",
+      "deadlines"
+    ]
   },
   {
     "id": "q_sw_3_02",
     "question": "Your Java backend service is failing SLA during peak load, and management is demanding an immediate fix while the team is in disagreement. How do you lead the resolution and meet the deadline?",
     "role": "software",
     "difficulty": 3,
-    "skill_tags": ["java", "deadlines", "leadership"]
+    "round_number": 3,
+    "skill_tags": [
+      "java",
+      "deadlines",
+      "leadership"
+    ]
+  },
+  {
+    "id": "q_sw_3_03",
+    "question": "A production database migration in DynamoDB or PostgreSQL corrupted active session data for 10% of users during an unannounced surge, with rollback threatening 4 hours of data loss. How do you lead the incident triage and stakeholder communications under pressure?",
+    "role": "software",
+    "difficulty": 3,
+    "round_number": 3,
+    "skill_tags": [
+      "dynamodb",
+      "incident",
+      "deadlines",
+      "problem-solving"
+    ]
+  },
+  {
+    "id": "q_sw_3_04",
+    "question": "Your engineering lead orders an emergency untested hotfix pushed to production two hours before an enterprise product launch, but you discovered a flaw that risks exposing user credentials. How do you navigate this intense conflict under deadline pressure?",
+    "role": "software",
+    "difficulty": 3,
+    "round_number": 3,
+    "skill_tags": [
+      "conflict",
+      "deadlines",
+      "leadership",
+      "communication"
+    ]
   },
   {
     "id": "q_ret_1_01",
     "question": "How do you greet and assist a customer who walks into the store looking undecided or overwhelmed?",
     "role": "retail",
     "difficulty": 1,
-    "skill_tags": ["customer service", "communication"]
+    "round_number": 1,
+    "skill_tags": [
+      "customer service",
+      "communication"
+    ]
   },
   {
     "id": "q_ret_1_02",
     "question": "How do you keep communication clear with your shift teammates during a busy store rush?",
     "role": "retail",
     "difficulty": 1,
-    "skill_tags": ["teamwork", "communication"]
+    "round_number": 1,
+    "skill_tags": [
+      "teamwork",
+      "communication"
+    ]
+  },
+  {
+    "id": "q_ret_1_03",
+    "question": "How do you quickly master a store product catalog and inventory layout to provide prompt, confident recommendations to shoppers?",
+    "role": "retail",
+    "difficulty": 1,
+    "round_number": 1,
+    "skill_tags": [
+      "customer service",
+      "communication"
+    ]
+  },
+  {
+    "id": "q_ret_1_04",
+    "question": "What steps do you take at the start of your shift to ensure checkout registers and promotional displays are organized and ready for customer traffic?",
+    "role": "retail",
+    "difficulty": 1,
+    "round_number": 1,
+    "skill_tags": [
+      "teamwork",
+      "problem-solving"
+    ]
   },
   {
     "id": "q_ret_2_01",
     "question": "Tell me about a situation where a customer was angry about a return or missing item. How did you de-escalate the issue and provide a satisfactory solution?",
     "role": "retail",
     "difficulty": 2,
-    "skill_tags": ["customer service", "problem-solving"]
+    "round_number": 2,
+    "skill_tags": [
+      "customer service",
+      "problem-solving"
+    ]
   },
   {
     "id": "q_ret_2_02",
     "question": "Describe a time when your retail team had to restock shelves and prepare inventory ahead of a strict store opening deadline.",
     "role": "retail",
     "difficulty": 2,
-    "skill_tags": ["teamwork", "deadlines"]
+    "round_number": 2,
+    "skill_tags": [
+      "teamwork",
+      "deadlines"
+    ]
   },
   {
     "id": "q_ret_2_03",
-    "question": "Can you share an instance where you stepped up to guide newer associates or handle an escalated customer service challenge when a manager wasn't available?",
+    "question": "Can you share an instance where you stepped up to guide newer associates or handle an escalated customer service challenge when a manager was not available?",
     "role": "retail",
     "difficulty": 2,
-    "skill_tags": ["leadership", "customer service"]
+    "round_number": 2,
+    "skill_tags": [
+      "leadership",
+      "customer service"
+    ]
+  },
+  {
+    "id": "q_ret_2_04",
+    "question": "Describe an instance where you used POS terminal systems or digital inventory barcode scanners to locate an out-of-stock item across partner locations for a customer.",
+    "role": "retail",
+    "difficulty": 2,
+    "round_number": 2,
+    "skill_tags": [
+      "customer service",
+      "problem-solving",
+      "pos"
+    ]
+  },
+  {
+    "id": "q_ret_2_05",
+    "question": "Tell me about a seasonal promotional reset or visual merchandising overhaul you executed. How did you coordinate with team members to hit sales targets within limited shift hours?",
+    "role": "retail",
+    "difficulty": 2,
+    "round_number": 2,
+    "skill_tags": [
+      "leadership",
+      "teamwork",
+      "deadlines"
+    ]
   },
   {
     "id": "q_ret_3_01",
     "question": "Imagine multiple dissatisfied customers are complaining loudly at checkout while the POS system crashes and your shift is understaffed. How do you prioritize actions, calm the room, and resolve the crisis?",
     "role": "retail",
     "difficulty": 3,
-    "skill_tags": ["customer service", "problem-solving", "communication"]
+    "round_number": 3,
+    "skill_tags": [
+      "customer service",
+      "problem-solving",
+      "communication"
+    ]
   },
   {
     "id": "q_ret_3_02",
     "question": "During a major holiday sale, a vendor shipment arrives late and damaged with high foot traffic expected in an hour. How do you rally the team under intense pressure to handle the situation?",
     "role": "retail",
     "difficulty": 3,
-    "skill_tags": ["leadership", "deadlines", "teamwork"]
+    "round_number": 3,
+    "skill_tags": [
+      "leadership",
+      "deadlines",
+      "teamwork"
+    ]
+  },
+  {
+    "id": "q_ret_3_03",
+    "question": "During a peak holiday shopping rush, an inventory system glitch results in 40 pre-ordered high-demand items being double-sold, leading to an aggressive customer confrontation at customer service. How do you de-escalate the floor and resolve the crisis?",
+    "role": "retail",
+    "difficulty": 3,
+    "round_number": 3,
+    "skill_tags": [
+      "customer service",
+      "conflict",
+      "problem-solving",
+      "leadership"
+    ]
+  },
+  {
+    "id": "q_ret_3_04",
+    "question": "A heated verbal altercation breaks out between two key cashiers over shift allocations while checkout lines extend into shopping aisles. How do you intervene immediately, maintain customer composure, and prevent a service shutdown?",
+    "role": "retail",
+    "difficulty": 3,
+    "round_number": 3,
+    "skill_tags": [
+      "conflict",
+      "leadership",
+      "teamwork",
+      "communication"
+    ]
   },
   {
     "id": "q_gen_1_01",
     "question": "Could you introduce yourself and highlight the top skills and experiences that make you a great fit for this position?",
     "role": "general",
     "difficulty": 1,
-    "skill_tags": ["communication"]
+    "round_number": 1,
+    "skill_tags": [
+      "communication"
+    ]
   },
   {
     "id": "q_gen_1_02",
     "question": "Tell me about what kind of team environment brings out your best work and how you contribute to day-to-day team success.",
     "role": "general",
     "difficulty": 1,
-    "skill_tags": ["teamwork", "problem-solving"]
+    "round_number": 1,
+    "skill_tags": [
+      "teamwork",
+      "problem-solving"
+    ]
+  },
+  {
+    "id": "q_gen_1_03",
+    "question": "How do you structure your daily schedule and prioritize incoming tasks when dealing with competing operational demands?",
+    "role": "general",
+    "difficulty": 1,
+    "round_number": 1,
+    "skill_tags": [
+      "problem-solving",
+      "deadlines"
+    ]
+  },
+  {
+    "id": "q_gen_1_04",
+    "question": "How do you maintain positive collaboration and open communication when project goals or team processes pivot on short notice?",
+    "role": "general",
+    "difficulty": 1,
+    "round_number": 1,
+    "skill_tags": [
+      "communication",
+      "teamwork"
+    ]
   },
   {
     "id": "q_gen_2_01",
     "question": "Tell me about a time you faced conflicting priorities or tight deadlines while working on a group project. How did you communicate and align with your team?",
     "role": "general",
     "difficulty": 2,
-    "skill_tags": ["teamwork", "communication", "deadlines"]
+    "round_number": 2,
+    "skill_tags": [
+      "teamwork",
+      "communication",
+      "deadlines"
+    ]
   },
   {
     "id": "q_gen_2_02",
     "question": "Describe a challenging situation where you had to persuade others or take initiative to solve a problem without formal authority.",
     "role": "general",
     "difficulty": 2,
-    "skill_tags": ["leadership", "problem-solving"]
+    "round_number": 2,
+    "skill_tags": [
+      "leadership",
+      "problem-solving"
+    ]
+  },
+  {
+    "id": "q_gen_2_03",
+    "question": "Describe a specific project where you had to collaborate closely with cross-functional partners who had conflicting KPIs or priorities. How did you achieve consensus and meet the deadline?",
+    "role": "general",
+    "difficulty": 2,
+    "round_number": 2,
+    "skill_tags": [
+      "communication",
+      "teamwork",
+      "leadership"
+    ]
+  },
+  {
+    "id": "q_gen_2_04",
+    "question": "Tell me about a time you audited a recurring workflow or data process, identified a critical inefficiency, and implemented a measurable improvement.",
+    "role": "general",
+    "difficulty": 2,
+    "round_number": 2,
+    "skill_tags": [
+      "problem-solving",
+      "communication"
+    ]
   },
   {
     "id": "q_gen_3_01",
     "question": "Tell me about an unexpected crisis or high-stakes failure you encountered in your previous work. How did you react under pressure, what decisions did you make, and what did you learn?",
     "role": "general",
     "difficulty": 3,
-    "skill_tags": ["problem-solving", "deadlines", "leadership"]
+    "round_number": 3,
+    "skill_tags": [
+      "problem-solving",
+      "deadlines",
+      "leadership"
+    ]
+  },
+  {
+    "id": "q_gen_3_02",
+    "question": "Your team misses an essential client deliverable due to a partner agency failure, and the client threatens immediate contract termination during an emergency conference call. How do you handle the confrontation, regain trust, and establish a recovery plan?",
+    "role": "general",
+    "difficulty": 3,
+    "round_number": 3,
+    "skill_tags": [
+      "communication",
+      "leadership",
+      "deadlines",
+      "conflict"
+    ]
+  },
+  {
+    "id": "q_gen_3_03",
+    "question": "A senior department lead vehemently rejects an executive compliance policy you are responsible for rolling out, urging their team to ignore it 48 hours before an audit. How do you resolve this high-stakes insubordination under time pressure?",
+    "role": "general",
+    "difficulty": 3,
+    "round_number": 3,
+    "skill_tags": [
+      "conflict",
+      "leadership",
+      "communication"
+    ]
+  },
+  {
+    "id": "q_gen_3_04",
+    "question": "An unexpected operational failure paralyzes business-critical operations during the busiest week of the quarter with no automated failover ready. How do you calm team anxiety, orchestrate manual workarounds, and report upwards under extreme pressure?",
+    "role": "general",
+    "difficulty": 3,
+    "round_number": 3,
+    "skill_tags": [
+      "leadership",
+      "incident",
+      "problem-solving",
+      "communication"
+    ]
   }
 ]

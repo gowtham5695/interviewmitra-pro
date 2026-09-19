@@ -165,20 +165,43 @@ def call_gemini_question(
     if not api_key or not api_key.strip():
         raise ValueError("GEMINI_API_KEY is not set or empty")
 
-    round_descriptions = {
-        1: "easy warm-up question to break the ice and assess basic background",
-        2: "behavioral question directly exploring projects, skills, and past challenges from the candidate resume",
-        3: "stress and high-pressure situational question testing rapid crisis decision-making and composure"
-    }
-    desc = round_descriptions.get(round_number, "interview question tailored to role and experience")
+    if round_number == 1:
+        stage_title = "Round 1 (Warm-up / Icebreaker)"
+        round_instructions = (
+            "- Goal: Break the ice, assess foundational background, communication clarity, and high-level motivation for the role.\n"
+            "- Tone & Difficulty: Easy, welcoming, and conversational."
+        )
+    elif round_number == 2:
+        stage_title = "Round 2 (Behavioral Deep-Dive & Technical Application)"
+        round_instructions = (
+            "- Goal: Deeply evaluate concrete technical competence, project leadership, and past problem-solving.\n"
+            "- CRITICAL REQUIREMENT: This question MUST be noticeably more specific and probing than Round 1. "
+            "You MUST identify and explicitly reference a SPECIFIC skill, project, tool, or technology directly mentioned "
+            "in the candidate's resume text (e.g., a named framework, database, cloud service, architectural pattern, or measurable project achievement). "
+            "Ask them to explain how they applied it, a complex technical challenge or trade-off they resolved with it, and the concrete outcome. "
+            "If no resume is provided, select a concrete, industry-standard technology or engineering project essential to the target role.\n"
+            "- Tone & Difficulty: Medium-Hard, highly technical, and probing."
+        )
+    else:
+        stage_title = "Round 3 (Stress & High-Pressure Situational Crisis)"
+        round_instructions = (
+            "- Goal: Assess crisis decision-making, composure under extreme stress, prioritization, and conflict resolution.\n"
+            "- CRITICAL REQUIREMENT: This question MUST be significantly harder and high-stakes. "
+            "You MUST present a realistic pressure scenario directly tied to the target role involving at least one of: "
+            "(a) an urgent/inflexible deadline, (b) severe interpersonal or stakeholder conflict, or (c) a catastrophic system/operational failure "
+            "(e.g., severe production outage during peak traffic, corrupt data right before launch, unexpected POS failure with angry customers, or conflicting executive orders). "
+            "Challenge the candidate to explain their immediate triage in the first 30 minutes, how they handle pushback, and the difficult trade-offs they would make.\n"
+            "- Tone & Difficulty: Hard, high-stakes situational crisis test."
+        )
 
     prompt = (
-        f"You are an expert interviewer conducting an interview for the role of '{role}'.\n"
+        f"You are an expert, seasoned interviewer conducting an interview for the target role of '{role}'.\n\n"
         f"Candidate Resume / Background Details:\n\"\"\"{resume_text or 'No resume provided'}\"\"\"\n\n"
-        f"Stage: Round {round_number} ({desc}).\n\n"
-        f"Generate exactly ONE interview question appropriate for Round {round_number}.\n"
-        f"Difficulty mapping: round 1 = easy warm-up, round 2 = behavioral based on resume, round 3 = stress/pressure.\n"
-        f"Output must be a valid JSON object with exactly this schema:\n"
+        f"Current Stage: {stage_title}\n"
+        f"{round_instructions}\n\n"
+        f"Rules:\n"
+        f"1. Generate exactly ONE focused interview question.\n"
+        f"2. Output must be a valid JSON object with exactly this schema:\n"
         f"{{\n"
         f'  "question": "Your interview question here",\n'
         f'  "difficulty": {round_number}\n'

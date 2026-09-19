@@ -29,7 +29,8 @@ class TestInterviewMitraProP2(unittest.TestCase):
 
     def test_question_bank_structure(self):
         bank = questions_app.load_question_bank()
-        self.assertEqual(len(bank), 20, "Question bank must have exactly 20 questions")
+        self.assertGreaterEqual(len(bank), 20, "Question bank must have at least 20 questions")
+        self.assertTrue(30 <= len(bank) <= 45, "Question bank should have between 30 and 45 questions")
 
         required_skills = {
             "python", "java", "teamwork", "leadership",
