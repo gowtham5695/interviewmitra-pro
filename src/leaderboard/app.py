@@ -56,7 +56,8 @@ def lambda_handler(event, context):
                     body = {}
 
             # Retrieve user_id from Cognito claims if authenticated, fallback to payload
-            authorizer_claims = event.get('requestContext', {}).get('authorizer', {}).get('claims', {})
+            authorizer = (event.get('requestContext') or {}).get('authorizer') or {}
+            authorizer_claims = authorizer.get('claims') or {}
             user_id = authorizer_claims.get('sub') or body.get('user_id') or body.get('username')
 
             if not user_id:
@@ -67,7 +68,7 @@ def lambda_handler(event, context):
                 }
 
             score = body.get('score', 0)
-            username = body.get('username', authorizer_claims.get('email', 'Anonymous'))
+            username = body.get('username') or authorizer_claims.get('email') or authorizer_claims.get('cognito:username') or 'Anonymous'
             target_role = body.get('target_role', 'General Software Engineer')
 
             # Prepare DynamoDB item (convert float score to Decimal)
